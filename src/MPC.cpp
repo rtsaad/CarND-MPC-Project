@@ -22,9 +22,9 @@ double dt = 0.100;
 //
 // This is the length from front to CoG that has a similar radius.
 const double Lf = 2.67;
-double ref_cte = 0;
-double ref_epsi = 0;
-double ref_v = 40;
+double ref_cte = 0.0;
+double ref_epsi = 0.0;
+double ref_v = 100.0;
 
 // The solver takes all the state variables and actuator
 // variables in a singular vector. Thus, we should to establish
@@ -55,20 +55,20 @@ class FG_eval {
     fg[0] = 0;
 
     //Cost related to the reference state.
-    for (int t = 0; t < N; t++) {
+    for (unsigned int t = 0; t < N; t++) {
       fg[0] += 2000*CppAD::pow(vars[cte_start + t] - ref_cte, 2);
       fg[0] += 2000*CppAD::pow(vars[epsi_start + t] - ref_epsi, 2);
       fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
     }
 
     //Minimize the use of actuators.
-    for (int t = 0; t < N - 1; t++) {
+    for (unsigned int t = 0; t < N - 1; t++) {
       fg[0] += 5*CppAD::pow(vars[delta_start + t], 2);
       fg[0] += 5*CppAD::pow(vars[a_start + t], 2);
     }
 
     //Minimize the value gap between sequential actuations.
-    for (int t = 0; t < N - 2; t++) {
+    for (unsigned int t = 0; t < N - 2; t++) {
       fg[0] += 200*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
       fg[0] += 10*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
@@ -91,7 +91,7 @@ class FG_eval {
     fg[1 + epsi_start] = vars[epsi_start];
 
     // The rest of the constraints
-    for (int t = 1; t < N; t++) {
+    for (unsigned int t = 1; t < N; t++) {
       // The state at time t+1 .
       AD<double> x1 = vars[x_start + t];
       AD<double> y1 = vars[y_start + t];
@@ -132,7 +132,7 @@ class FG_eval {
       fg[1 + cte_start + t] =
           cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
       fg[1 + epsi_start + t] =
-          epsi1 - ((psi0 - psides0) + v0 * delta0 / Lf * dt);
+	epsi1 - ((psi0 - psides0) - v0 * delta0 / Lf * dt);//+
     }
   }
 };
@@ -168,8 +168,15 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   // SHOULD BE 0 besides initial state.
   Dvector vars(n_vars);
   for (i = 0; i < n_vars; i++) {
-    vars[i] = 0.0;
+    vars[i] = 0;
   }
+  // Set the initial variable values
+  /*vars[x_start] = x;
+  vars[y_start] = y;
+  vars[psi_start] = psi;
+  vars[v_start] = v;
+  vars[cte_start] = cte;
+  vars[epsi_start] = epsi;*/
  
   Dvector vars_lowerbound(n_vars);
   Dvector vars_upperbound(n_vars);

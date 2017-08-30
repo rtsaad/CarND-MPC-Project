@@ -92,11 +92,11 @@ int main() {
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
 
-      	  for(int i=0; i < ptsx.size(); i++){
+      	  for(unsigned int i=0; i < ptsx.size(); i++){
       
       	    //shift car reference angle to 90 degrees
       	    double shift_x = ptsx[i] -px;
-      	    double shift_y = ptsx[i] -py;
+      	    double shift_y = ptsy[i] -py;
       
       	    ptsx[i] = (shift_x * cos(0-psi) - shift_y*sin(0-psi));
       	    ptsy[i] = (shift_x * sin(0-psi) + shift_y*cos(0-psi));
@@ -137,14 +137,14 @@ int main() {
       	  const double poly_inc = 2.5;
       	  //number of points to print
       	  const int num_points = 25;
-      	  for(int i=1; i<num_points; i++){
+      	  for(unsigned int i=1; i<num_points; i++){
       	    next_x_vals.push_back(poly_inc*i);
       	    next_y_vals.push_back(polyeval(coeffs, poly_inc*i));
       	  }
       
       	  vector<double> mpc_x_vals;
       	  vector<double> mpc_y_vals;
-      	  for(int i=2; i<vars.size(); i++){
+      	  for(unsigned int i=2; i<vars.size(); i++){
       	    if(i%2==0){
       	      mpc_x_vals.push_back(vars[i]);
       	    } else {
@@ -186,7 +186,7 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          this_thread::sleep_for(chrono::milliseconds(0));
+          //this_thread::sleep_for(chrono::milliseconds(100));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {
