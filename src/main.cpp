@@ -90,7 +90,10 @@ int main() {
           double px = j[1]["x"];
           double py = j[1]["y"];
           double psi = j[1]["psi"];
+	  double psi_unity = j[1]["psi_unity"];
           double v = j[1]["speed"];
+	  double steer_value = j[1]["steering_angle"];
+          double throttle_value = j[1]["throttle"];
 
       	  for(unsigned int i=0; i < ptsx.size(); i++){
       
@@ -120,14 +123,23 @@ int main() {
                 *
                 * Both are in between [-1, 1].
                 *
-                */
-               
-          double steer_value = j[1]["steering_angle"];
-          double throttle_value = j[1]["throttle"];
-      
+                */        
+          
+
+	  //predict next state
+	  //Latency of .1 seconds
+	  double dt = 0.1;
+	  const double Lf = 2.67;
+	  double x1=0, y1=0,  psi1=0, v1=0, cte1=0, epsi1=0;	  
+	  x1 = v * cos(psi - M_PI/2) * dt;
+	  y1 = v * sin(psi - M_PI/2) * dt;
+	  psi1 = (psi - M_PI/2) - v/Lf * steer_value * dt;
+	  v1 = v + throttle_value * dt;
+	  cte1 = cte + (v * sin(epsi) * dt);
+	  epsi1 = (psi_unity - epsi) - v * steer_value / Lf * dt;
       	  Eigen::VectorXd state(6);
-      	  state << 0,0,0,v,cte,epsi;
-      
+      	  state << x1,y1,psi1,v1,cte1,epsi1;
+	  std::cout << state << "\n";
       	  auto vars = mpc.Solve(state, coeffs);
       
       	  //print polynomial back to simulator
@@ -152,12 +164,12 @@ int main() {
       	    }
       	  }
       
-      	  const double Lf = 2.67;
+      	  
 	  
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
-          msgJson["steering_angle"] = vars[0]/(deg2rad(25));
+          msgJson["steering_angle"] = vars[0]/(deg2rad(25)*Lf);
           msgJson["throttle"] = vars[1];
 
 	        //Display the MPC predicted trajectory           
@@ -186,7 +198,7 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          //this_thread::sleep_for(chrono::milliseconds(100));
+          this_thread::sleep_for(chrono::milliseconds(100));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {
