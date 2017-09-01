@@ -116,7 +116,7 @@ int main() {
       
       	  //moved x and psi to zero
       	  double cte = polyeval(coeffs, 0);
-      	  double epsi = -atan(coeffs[1]);
+      	  double epsi = -atan(coeffs[1]);	  
 
       	   /*
                 * TODO: Calculate steering angle and throttle using MPC.
@@ -130,16 +130,23 @@ int main() {
 	  //Latency of .1 seconds
 	  double dt = 0.1;
 	  const double Lf = 2.67;
-	  double x1=0, y1=0,  psi1=0, v1=0, cte1=0, epsi1=0;	  
-	  x1 = v * cos(psi - M_PI/2) * dt;
-	  y1 = v * sin(psi - M_PI/2) * dt;
-	  psi1 = (psi - M_PI/2) - v/Lf * steer_value * dt;
+	  double x1=0, y1=0,  psi1=0, v1=0, cte1=0, epsi1=0;
+	  double psii = psi;
+	  //if(psii > M_PI){
+	    psii -= M_PI;
+	    //}
+	  x1 = v * cos(psii) * dt;
+	  y1 = v * sin(psii) * dt;
+	  psi1 = psii - v/Lf * steer_value * dt;
 	  v1 = v + throttle_value * dt;
-	  cte1 = cte + (v * sin(epsi) * dt);
-	  epsi1 = (psi_unity - epsi) - v * steer_value / Lf * dt;
-      	  Eigen::VectorXd state(6);
+	  double f0 = coeffs[0];
+	  double psidest = -atan(coeffs[1]);
+	  cte1 =  cte + v * sin(epsi) * dt;
+	  epsi1 = epsi - v * steer_value / Lf * dt;
+      	  Eigen::VectorXd state(6);	  
       	  state << x1,y1,psi1,v1,cte1,epsi1;
 	  std::cout << state << "\n";
+	  std::cout << cte << " " << epsi << "\n";
       	  auto vars = mpc.Solve(state, coeffs);
       
       	  //print polynomial back to simulator
