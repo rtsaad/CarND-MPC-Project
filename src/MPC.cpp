@@ -59,7 +59,7 @@ class FG_eval {
 
     //Minimize the use of actuators.
     for (unsigned int t = 0; t < N - 1; t++) {
-      fg[0] += 250*CppAD::pow((vars[delta_start + t]/(0.436332*Lf))*vars[a_start + t], 2); //200
+      fg[0] += 250*CppAD::pow((vars[delta_start + t]/(0.436332*Lf))*vars[a_start + t], 2); 
       //fg[0] += 200*CppAD::pow(vars[delta_start + t], 2); //200
       //fg[0] += 200*CppAD::pow(vars[a_start + t], 2); //200
     }
