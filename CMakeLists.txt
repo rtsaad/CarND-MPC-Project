@@ -25,5 +25,8 @@ endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 add_executable(mpc ${sources})
 
-target_link_libraries(mpc ipopt z ssl uv uWS)
-
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+target_link_libraries(mpc ipopt z ssl uv uWS python2.7)
+else()
+target_link_libraries(mpc ipopt z ssl uv uWS python)
+endif()

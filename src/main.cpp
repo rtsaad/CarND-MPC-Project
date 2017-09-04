@@ -8,6 +8,14 @@
 #include "Eigen-3.3/Eigen/QR"
 #include "MPC.h"
 #include "json.hpp"
+#include "matplotlibcpp.h"
+
+
+//Plot CTE, Delta and Speed
+//Requires matplotlib
+bool plotting = false;
+int max_iters = 100;
+namespace plt = matplotlibcpp;
 
 // for convenience
 using json = nlohmann::json;
@@ -70,8 +78,18 @@ int main() {
 
   // MPC is initialized here!
   MPC mpc;
+  //For plotting
+  int iters = 0;
+  std::vector<double> x_vals = {};
+  std::vector<double> y_vals = {};
+  std::vector<double> psi_vals = {};
+  std::vector<double> v_vals = {};
+  std::vector<double> cte_vals = {};
+  std::vector<double> epsi_vals = {};
+  std::vector<double> delta_vals = {};
+  std::vector<double> a_vals = {};  
 
-  h.onMessage([&mpc](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  h.onMessage([&mpc, &iters, &x_vals, &y_vals, &psi_vals, &v_vals, &cte_vals, &epsi_vals, &delta_vals, &a_vals](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -89,12 +107,13 @@ int main() {
           vector<double> ptsy = j[1]["ptsy"];
           double px = j[1]["x"];
           double py = j[1]["y"];
-          double psi = j[1]["psi"];
-	  double psi_unity = j[1]["psi_unity"];
+          double psi = j[1]["psi"];	  
           double v = j[1]["speed"];
 	  double steer_value = j[1]["steering_angle"];
-          double throttle_value = j[1]["throttle"];
+          double throttle_value = j[1]["throttle"];	  
 
+	  //Adjust plain path to car coordinates
+	  //Set x, y and psi to zero
       	  for(unsigned int i=0; i < ptsx.size(); i++){
       
       	    //shift car reference angle to 90 degrees
@@ -111,54 +130,54 @@ int main() {
       	  
       	  double* ptry = &ptsy[0];
       	  Eigen::Map<Eigen::VectorXd> ptsy_transform(ptry, 6);
-      
+	  //Fit the Polynomial
       	  auto coeffs = polyfit(ptsx_transform, ptsy_transform, 3);
       
-      	  //moved x and psi to zero
+	  //Get cte and epsi
       	  double cte = polyeval(coeffs, 0);
-      	  double epsi = -atan(coeffs[1]);	  
+      	  double epsi = -atan(coeffs[1]);
 
-      	   /*
-                * TODO: Calculate steering angle and throttle using MPC.
-                *
-                * Both are in between [-1, 1].
-                *
-                */        
-          
+	  //Plotting
+	  if(plotting){
+	    //If set, save data for plotting
+	    iters++;
+	    x_vals.push_back(px);
+	    y_vals.push_back(py);
+	    psi_vals.push_back(psi);
+	    v_vals.push_back(v);
+	    cte_vals.push_back(cte);
+	    epsi_vals.push_back(epsi);	  
+	    delta_vals.push_back(steer_value);
+	    a_vals.push_back(throttle_value);
+	  }
 
-	  //predict next state
+	  //predict next state to avoid Latency problems
 	  //Latency of .1 seconds
 	  double dt = 0.1;
 	  const double Lf = 2.67;
-	  double x1=0, y1=0,  psi1=0, v1=0, cte1=0, epsi1=0;
-	  double psii = psi;
-	  //if(psii > M_PI){
-	    psii -= M_PI;
-	    //}
-	  x1 = v * cos(psii) * dt;
-	  y1 = v * sin(psii) * dt;
-	  psi1 = psii - v/Lf * steer_value * dt;
-	  v1 = v + throttle_value * dt;
-	  double f0 = coeffs[0];
-	  double psidest = -atan(coeffs[1]);
-	  cte1 =  cte + v * sin(epsi) * dt;
-	  epsi1 = epsi - v * steer_value / Lf * dt;
+	  double x1=0, y1=0,  psi1=0, v1=v, cte1=cte, epsi1=epsi;	  
+	  x1 += v * cos(0) * dt;
+	  y1 += v * sin(0) * dt;
+	  //steer_value is negative
+	  psi1 += - v/Lf * steer_value * dt;
+	  v1 += throttle_value * dt;	    
+	  cte1 +=   v * sin(epsi1) * dt;
+	  //steer_value is negative
+	  epsi1 += - v * steer_value / Lf * dt;	  
       	  Eigen::VectorXd state(6);	  
       	  state << x1,y1,psi1,v1,cte1,epsi1;
-	  std::cout << state << "\n";
-	  std::cout << cte << " " << epsi << "\n";
-      	  auto vars = mpc.Solve(state, coeffs);
+	  auto vars = mpc.Solve(state, coeffs);
       
       	  //print polynomial back to simulator
-      	  vector<double> next_x_vals;
-      	  vector<double> next_y_vals;  
+      	  vector<double> way_x_vals;
+      	  vector<double> way_y_vals;  
       	  //x value distance
-      	  const double poly_inc = 2.5;
+      	  const double poly_inc = Lf;
       	  //number of points to print
       	  const int num_points = 25;
       	  for(unsigned int i=1; i<num_points; i++){
-      	    next_x_vals.push_back(poly_inc*i);
-      	    next_y_vals.push_back(polyeval(coeffs, poly_inc*i));
+      	    way_x_vals.push_back(poly_inc*i);
+      	    way_y_vals.push_back(polyeval(coeffs, poly_inc*i));
       	  }
       
       	  vector<double> mpc_x_vals;
@@ -172,27 +191,18 @@ int main() {
       	  }
       
       	  
-	  
+	  // Calculate steering angle and throttle using MPC.
           json msgJson;
-          // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
-          // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
           msgJson["steering_angle"] = vars[0]/(deg2rad(25)*Lf);
           msgJson["throttle"] = vars[1];
 
-	        //Display the MPC predicted trajectory           
-          //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
-          // the points in the simulator are connected by a Green line
-
+	  //Display the MPC predicted trajectory           
           msgJson["mpc_x"] = mpc_x_vals;
           msgJson["mpc_y"] = mpc_y_vals;
 
           //Display the waypoints/reference line
-          //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
-          // the points in the simulator are connected by a Yellow line
-
-          msgJson["next_x"] = next_x_vals;
-          msgJson["next_y"] = next_y_vals;
-
+          msgJson["next_x"] = way_x_vals;
+          msgJson["next_y"] = way_y_vals;
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           std::cout << msg << std::endl;
@@ -202,11 +212,26 @@ int main() {
           //
           // Feel free to play around with this value but should be to drive
           // around the track with 100ms latency.
-          //
-          // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
-          // SUBMITTING.
+          //        
           this_thread::sleep_for(chrono::milliseconds(100));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+
+	  if(iters > max_iters){
+	    //Plot Graph for analysis of the first 100 iterations
+	    plt::subplot(3, 1, 1);
+	    plt::title("CTE");
+	    plt::plot(cte_vals);
+	    plt::subplot(3, 1, 2);
+	    plt::title("Delta (Radians)");
+	    plt::plot(delta_vals);
+	    plt::subplot(3, 1, 3);
+	    plt::title("Velocity");
+	    plt::plot(v_vals);	    
+	    plt::show();
+	    iters = 0;
+	    exit(1);
+	  }
+	  
         }
       } else {
         // Manual driving
