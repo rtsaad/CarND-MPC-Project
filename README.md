@@ -63,9 +63,7 @@ The main program can be built and run by doing the following from the project to
 5. ./pid
 6. Run the Udacity Simulator (./term2_simulator)
 
-## 4.Model Predictive Control
-
-$$Need to describe the state, actuators and update equations
+## 4.Model Predictive Control 
 
 The [MPC](https://en.wikipedia.org/wiki/Model_predictive_control) is an advanced control technique for complex control problems. MPC is an optmization problem to find the best set of control inputs that minimizes the cost functions based on the prediction (dynamical) model. The MPC controller consists of:
 
@@ -86,15 +84,21 @@ The state consists of sytem variables and errors references: ``[x,y,psi,v,cte,ep
 The followind equations updates the prediction model at every timestep:
 
 ![equation](http://latex.codecogs.com/gif.latex?x_%28t&plus;1%29%20%3D%20x_t%20&plus;%20v_t%20*%20cos%28%5Cpsi_t%29*dt)
+
 ![equation](http://latex.codecogs.com/gif.latex?y_%28t&plus;1%29%20%3D%20y_t%20&plus;%20v_t%20*%20sin%28%5Cpsi_t%29*dt)
+
 ![equation](http://latex.codecogs.com/gif.latex?%5Cpsi%20_%28t&plus;1%29%20%3D%20%5Cpsi%20_t%20&plus;%20%5Cfrac%7Bv_t%7D%7BL_f%7D*%20%5Cdelta_t%20*%20dt)
+
 ![equation](http://latex.codecogs.com/gif.latex?v_%28t&plus;1%29%20%3D%20v%20_t%20&plus;%20a_t%20*%20dt)
+
 ![equation](http://latex.codecogs.com/gif.latex?cte_%28t&plus;1%29%20%3D%20f%28x_t%29%20-%20y_t%20&plus;%20v%20_t%20*%20sin%28e%5Cpsi%20_t%29%20*%20dt)
+
 ![equation](http://latex.codecogs.com/gif.latex?e%5Cpsi%20_%28t&plus;1%29%20%3D%20%5Cpsi%20_t%20-%20%5Cpsi%20dest%20&plus;%20%5Cfrac%7Bv_f%7D%7BL_f%7D%20*%20%5Cdelta_t%20*%20dt)
+
 
 ``Lf`` measures the distance between the front of the vehicle and its center of gravity. ``f(x)`` is the evaluation of the polynomial ``f`` at point x and ``psidest`` is the tangencial angle of the polynomial ``f`` evaluated at x.
 
-### 4.2 Polynomial Fitting and MPC Preprocessing
+### 4.4 Polynomial Fitting and MPC Preprocessing
 
 Before fitting the path returned from the simulator, we have to preprocess in order to move the points to the origin (x=0, y=0) and also rotate the path to follow the car orientation.
 
@@ -113,11 +117,12 @@ for(unsigned int i=0; i < ptsx.size(); i++){
 
 After preprocessing, the polynomial is fitted using the helper function ``polyfit`` (file main.cpp at line 134). 
 
-### 4.4 Constraints
+### 4.5 Constraints
 
 The actuators constraints limits the upper and lower bounds of the steering angle and throttle acceleration/brake.
 
 ![equation](http://latex.codecogs.com/gif.latex?%5Cdelta%20%5Cepsilon%20%5B-25%5E%7B%5Ccirc%7D%2C%2025%5E%7B%5Ccirc%7D%5D)
+
 ![equation](http://latex.codecogs.com/gif.latex?a%20%5Cepsilon%20%5B-1%2C%201%5D)
 
 The MPC cost captures the error to be minimized. The const function requires the model to predict where the vehicle will go into the future in order to compute the difference where the vehicle should be and where the model predicted. 
@@ -149,11 +154,11 @@ For this project, we used the following cost functions to tune the controller:
 	}
 ```
 
-Figure 2 shows the CTE error, Delta (steering angle) and Speed plot with the cost function presented above.
+Figure 2 shows the CTE error, Delta (steering angle) and Speed plot with the cost function presented above. 
 
 ![alt text][image2]
 
-### 4.3 Latency
+### 4.6 Latency
 
 In order to deal with the latency, we have to predict the next state before calling the MPC solver. It can be acoomplished using the Model equations. Below, the pseudocode to predict the next state. 
 
@@ -166,5 +171,6 @@ v1    = throttle_value * dt;
 cte1  =   v * sin(epsi1) * dt;
 epsi1 = - v * steer_value / Lf * dt;	
 ```
- 
+
+This [video](https://github.com/otomata/CarND-MPC-Project/blob/master/images/mpc.mp4) presents the car driving around the track.
 
