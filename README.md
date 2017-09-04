@@ -154,7 +154,7 @@ For this project, we used the following cost functions to tune the controller:
 	}
 ```
 
-Figure 2 shows the CTE error, Delta (steering angle) and Speed plot with the cost function presented above. 
+Figure 2 shows the CTE error, Delta (steering angle) and Speed plot for the first 100 iterations on the simulator using the cost function presented above. 
 
 ![alt text][image2]
 
